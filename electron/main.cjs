@@ -53,7 +53,7 @@ function createWindow() {
     minHeight: 680,
     backgroundColor: "#e8dcc7",
     title: "Workday Calendar",
-    show: true,
+    show: !settings.desktopMode,
     opacity: settings.opacity || 1,
     alwaysOnTop: Boolean(settings.alwaysOnTop),
     webPreferences: {
@@ -111,11 +111,11 @@ function showWidget() {
     return;
   }
   widgetWindow = new BrowserWindow({
-    width: 330,
-    height: 420,
+    width: 440,
+    height: 600,
     frame: false,
     resizable: true,
-    alwaysOnTop: true,
+    alwaysOnTop: false,
     skipTaskbar: true,
     backgroundColor: "#e8dcc7",
     webPreferences: {
@@ -244,6 +244,7 @@ ipcMain.handle("check-for-updates", async () => {
 ipcMain.on("close-widget", () => {
   if (widgetWindow && !widgetWindow.isDestroyed()) widgetWindow.close();
 });
+ipcMain.on("open-main", showWindow);
 app.on("before-quit", () => {
   app.isQuitting = true;
   globalShortcut.unregisterAll();

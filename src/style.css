@@ -17,6 +17,18 @@ body {
   min-height: 100vh;
   background: #e8dcc7;
 }
+.app.theme-lavender { background: #faf7ff; color: #4c3d69; }
+.app.theme-lavender main { background: #faf7ff; color: #4c3d69; }
+.app.theme-lavender .sidebar { background: #8b75a8; }
+.app.theme-lavender .calendar-panel { border-color: #c4b5fd; background: #fff; }
+.app.theme-lavender .day.chosen { background: #ede9fe; }
+.app.theme-lavender .focus-bar strong, .app.theme-lavender .eyebrow, .app.theme-lavender .date-label { color: #7c3aed; }
+.app.theme-sky { background: #f0f9ff; color: #164e63; }
+.app.theme-sky main { background: #f0f9ff; color: #164e63; }
+.app.theme-sky .sidebar { background: #167a9a; }
+.app.theme-sky .calendar-panel { border-color: #7dd3fc; background: #fff; }
+.app.theme-sky .day.chosen { background: #e0f2fe; }
+.app.theme-sky .focus-bar strong, .app.theme-sky .eyebrow, .app.theme-sky .date-label { color: #0284c7; }
 .app[style*="background-image"] .sidebar,
 .app[style*="background-image"] main {
   background: transparent;
@@ -53,6 +65,11 @@ body {
   text-align: left;
   cursor: pointer;
 }
+.desktop-content-settings { border: 1px solid #99f6e4; border-radius: 8px; padding: 12px; margin: 14px 0; background: #f8fffe; }
+.desktop-content-settings > strong { display: block; font-size: 12px; margin-bottom: 5px; color: #134e4a; }
+.setting-row.compact { padding: 8px 2px; border-bottom: 1px solid #e8f1f4; }
+.setting-row.compact:last-child { border-bottom: 0; }
+.setting-row.compact input[type="number"] { width: 80px; padding: 6px 8px; }
 .tool-row span {
   flex: 1;
 }

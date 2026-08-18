@@ -95,45 +95,79 @@ function Widget() {
   const [tasks, setTasks] = useState(() => read("workday-tasks", initial)),
     [note, setNote] = useState(
       () => localStorage.getItem("workday-note") || "",
+    ),
+    [theme, setTheme] = useState(
+      () => localStorage.getItem("workday-theme") || "sage",
+    ),
+    [prefs] = useState(() =>
+      read("workday-desktop-prefs", {
+        showNote: true,
+        showTasks: true,
+        showAgenda: true,
+        taskLimit: 8,
+      }),
     );
   const active = tasks
     .filter((t) => !t.done && !t.cancelled && inRange(t, key(now)))
-    .slice(0, 5);
+    .slice(0, prefs.taskLimit || 8);
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === "workday-theme") setTheme(e.newValue || "sage");
+      if (e.key === "workday-desktop-prefs") window.location.reload();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
   const complete = (id) => {
     const n = tasks.map((t) => (t.id === id ? { ...t, done: true } : t));
     setTasks(n);
     localStorage.setItem("workday-tasks", JSON.stringify(n));
   };
   return (
-    <div className="widget">
+    <div className={`widget widget-theme-${theme}`}>
       <div className="widget-head">
         <strong>{T.app}</strong>
         <span>
           {key(now)}{" "}
+          <button onClick={() => window.desktop?.openMain?.()}>
+            打开完整日历
+          </button>
           <button onClick={() => window.desktop?.closeWidget?.()}>
             \u5173\u95ed
           </button>
         </span>
       </div>
-      <textarea
-        value={note}
-        onChange={(e) => {
-          setNote(e.target.value);
-          localStorage.setItem("workday-note", e.target.value);
-        }}
-        placeholder="\u684c\u9762\u4fbf\u7b7e..."
-      />
-      <h3>\u4eca\u65e5\u5f85\u529e</h3>
-      {active.map((t) => (
-        <button
-          className="widget-task"
-          key={t.id}
-          onClick={() => complete(t.id)}
-        >
-          <span />
-          {t.title}
-        </button>
-      ))}
+      {prefs.showNote && (
+        <textarea
+          value={note}
+          onChange={(e) => {
+            setNote(e.target.value);
+            localStorage.setItem("workday-note", e.target.value);
+          }}
+          placeholder="\u684c\u9762\u4fbf\u7b7e..."
+        />
+      )}
+      {prefs.showTasks && (
+        <>
+          <h3>\u4eca\u65e5\u5f85\u529e</h3>
+          {active.map((t) => (
+            <button
+              className="widget-task"
+              key={t.id}
+              onClick={() => complete(t.id)}
+            >
+              <span />
+              {t.title}
+            </button>
+          ))}
+        </>
+      )}
+      {prefs.showAgenda && (
+        <div className="widget-summary">
+          未完成 {tasks.filter((t) => !t.done && !t.cancelled).length} 项 ·
+          点击圆点即可完成
+        </div>
+      )}
     </div>
   );
 }
@@ -159,6 +193,14 @@ function App() {
     [editing, setEditing] = useState(null),
     [newTag, setNewTag] = useState(""),
     [desktopMode, setDesktopMode] = useState(true),
+    [desktopPrefs, setDesktopPrefs] = useState(() =>
+      read("workday-desktop-prefs", {
+        showNote: true,
+        showTasks: true,
+        showAgenda: true,
+        taskLimit: 8,
+      }),
+    ),
     [updateStatus, setUpdateStatus] = useState(""),
     [query, setQuery] = useState(""),
     [filter, setFilter] = useState("open"),
@@ -184,6 +226,10 @@ function App() {
   const save = (n) => {
     setTasks(n);
     localStorage.setItem("workday-tasks", JSON.stringify(n));
+  };
+  const saveDesktopPrefs = (next) => {
+    setDesktopPrefs(next);
+    localStorage.setItem("workday-desktop-prefs", JSON.stringify(next));
   };
   const checkUpdates = async () => {
     setUpdateStatus("正在检查...");
@@ -306,7 +352,15 @@ function App() {
   }, [cursor]);
   const displayDays =
     view === "week"
-      ? days.slice(0, 7)
+      ? (() => {
+          const base = new Date(`${selected}T00:00:00`);
+          base.setDate(base.getDate() - base.getDay());
+          return Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(base);
+            d.setDate(base.getDate() + i);
+            return d;
+          });
+        })()
       : view === "day"
         ? days.filter((d) => key(d) === selected)
         : view === "year"
@@ -334,7 +388,7 @@ function App() {
       }
     : {};
   return (
-    <div className={`app theme-${theme}`} style={bgStyle}>
+    <div className={`app theme-${theme} view-${view}`} style={bgStyle}>
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">
@@ -560,6 +614,63 @@ function App() {
                 }}
               />
             </label>
+            <div className="desktop-content-settings">
+              <strong>桌面上显示的内容</strong>
+              <label className="setting-row compact">
+                <span>桌面便签</span>
+                <input
+                  type="checkbox"
+                  checked={desktopPrefs.showNote}
+                  onChange={(e) =>
+                    saveDesktopPrefs({
+                      ...desktopPrefs,
+                      showNote: e.target.checked,
+                    })
+                  }
+                />
+              </label>
+              <label className="setting-row compact">
+                <span>今日待办</span>
+                <input
+                  type="checkbox"
+                  checked={desktopPrefs.showTasks}
+                  onChange={(e) =>
+                    saveDesktopPrefs({
+                      ...desktopPrefs,
+                      showTasks: e.target.checked,
+                    })
+                  }
+                />
+              </label>
+              <label className="setting-row compact">
+                <span>完成统计</span>
+                <input
+                  type="checkbox"
+                  checked={desktopPrefs.showAgenda}
+                  onChange={(e) =>
+                    saveDesktopPrefs({
+                      ...desktopPrefs,
+                      showAgenda: e.target.checked,
+                    })
+                  }
+                />
+              </label>
+              <label className="setting-row compact">
+                <span>最多显示待办数</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={desktopPrefs.taskLimit}
+                  onChange={(e) =>
+                    saveDesktopPrefs({
+                      ...desktopPrefs,
+                      taskLimit: Number(e.target.value) || 8,
+                    })
+                  }
+                />
+              </label>
+            </div>
             <label className="setting-row">
               <span>
                 <Palette size={16} />
@@ -638,7 +749,9 @@ function App() {
                     onClick={() => setSelected(k)}
                     onDoubleClick={() => openNew(k)}
                   >
-                    <span className="date-number">{d.getDate()}</span>
+                    <span className="date-number">
+                      {view === "year" ? `${d.getMonth() + 1}月` : d.getDate()}
+                    </span>
                     {dayTasks.slice(0, 2).map((t) => (
                       <span
                         className={`event ${t.tag}`}

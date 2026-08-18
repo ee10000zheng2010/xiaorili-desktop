@@ -12,5 +12,6 @@ contextBridge.exposeInMainWorld("desktop", {
   onUpdateAvailable: (callback) =>
     ipcRenderer.on("update-available", (_, info) => callback(info)),
   closeWidget: () => ipcRenderer.send("close-widget"),
+  openMain: () => ipcRenderer.send("open-main"),
   onNewTask: (callback) => ipcRenderer.on("new-task", callback),
 });
