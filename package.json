@@ -26,9 +26,11 @@
     "playwright": "^1.62.1"
   },
   "build": {
+    "icon": "assets/app-icon.ico",
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "assets/**/*",
       "package.json"
     ],
     "win": {

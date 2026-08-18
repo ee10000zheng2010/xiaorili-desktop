@@ -43,6 +43,7 @@ const readSettings = () => {
 const writeSettings = (settings) =>
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 const appFile = (file) => path.join(__dirname, "..", "dist", file);
+const iconFile = path.join(__dirname, "..", "assets", "app-icon.png");
 
 function createWindow() {
   const settings = readSettings();
@@ -53,6 +54,7 @@ function createWindow() {
     minHeight: 680,
     backgroundColor: "#e8dcc7",
     title: "Workday Calendar",
+    icon: iconFile,
     show: !settings.desktopMode,
     opacity: settings.opacity || 1,
     alwaysOnTop: Boolean(settings.alwaysOnTop),
@@ -118,6 +120,7 @@ function showWidget() {
     alwaysOnTop: false,
     skipTaskbar: true,
     backgroundColor: "#e8dcc7",
+    icon: iconFile,
     webPreferences: {
       contextIsolation: true,
       preload: path.join(__dirname, "preload.cjs"),
@@ -129,9 +132,7 @@ function showWidget() {
   });
 }
 function createTray() {
-  const icon = nativeImage.createFromDataURL(
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAKElEQVR42mNkYGD4z0AEYBxVSFQYGBgYGBj+////PwMDAwMAAAQCAQAA3CkGAAAAAElFTkSuQmCC",
-  );
+  const icon = nativeImage.createFromPath(iconFile);
   tray = new Tray(icon);
   tray.setToolTip("Workday Calendar");
   tray.setContextMenu(
