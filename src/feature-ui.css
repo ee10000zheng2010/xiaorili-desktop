@@ -1,0 +1,68 @@
+.image-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 8px 0;
+  padding: 9px;
+  border: 1px solid #e8dcc7;
+  border-radius: 8px;
+  color: #28332c;
+  cursor: pointer;
+  font-size: 12px;
+}
+.image-button:hover {
+  background: #e8dcc7;
+}
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 22px;
+}
+.check-row input {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+}
+.tag-manager {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tag-manager input {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.tag-manager button,
+.data-actions button,
+.data-actions label {
+  border: 1px solid #b08b6e;
+  background: #fffaf0;
+  color: #687667;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tag-manager button:hover,
+.data-actions button:hover,
+.data-actions label:hover {
+  background: #d4b895;
+  color: #28332c;
+}
+.data-actions {
+  display: flex;
+  gap: 7px;
+  margin-top: 16px;
+}
+.data-actions label {
+  justify-content: center;
+}
+.data-actions input {
+  display: none;
+}
