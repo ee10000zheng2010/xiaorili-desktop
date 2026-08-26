@@ -7,3 +7,6 @@ dist/
 .env.*
 !.env.example
 
+# Local build artifacts
+release-build/
+release/

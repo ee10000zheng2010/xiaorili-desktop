@@ -1,0 +1,8 @@
+{
+  "appId": "com.xiaorili.mobile",
+  "appName": "小日历",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http"
+  }
+}
