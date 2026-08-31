@@ -21,6 +21,41 @@ const normalizePhone = (phone) => {
   const normalized = /^1[3-9]\d{9}$/.test(digits) ? `+86${digits}` : digits;
   return /^\+?\d{6,15}$/.test(normalized) ? normalized : "";
 };
+const smsProvider = process.env.SMS_PROVIDER || "";
+const aliyunSms = {
+  accessKeyId: process.env.ALIYUN_SMS_ACCESS_KEY_ID || "",
+  accessKeySecret: process.env.ALIYUN_SMS_ACCESS_KEY_SECRET || "",
+  signName: process.env.ALIYUN_SMS_SIGN_NAME || "",
+  templateCode: process.env.ALIYUN_SMS_TEMPLATE_CODE || "",
+};
+const percentEncode = (value) => encodeURIComponent(String(value)).replace(/\+/g, "%20").replace(/\*/g, "%2A").replace(/%7E/g, "~");
+const sendSms = async (phone, code) => {
+  if (devSms) return { ok: true, devCode: code };
+  if (smsProvider !== "aliyun") throw new Error("短信服务未配置：请设置 SMS_PROVIDER 和对应凭证");
+  const params = {
+    AccessKeyId: aliyunSms.accessKeyId,
+    Action: "SendSms",
+    Format: "JSON",
+    PhoneNumbers: phone,
+    RegionId: "cn-hangzhou",
+    SignName: aliyunSms.signName,
+    SignatureMethod: "HMAC-SHA1",
+    SignatureNonce: crypto.randomUUID(),
+    SignatureVersion: "1.0",
+    TemplateCode: aliyunSms.templateCode,
+    TemplateParam: JSON.stringify({ code }),
+    Timestamp: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+    Version: "2017-05-25",
+  };
+  if (!params.AccessKeyId || !aliyunSms.accessKeySecret || !params.SignName || !params.TemplateCode) throw new Error("短信服务配置不完整：请检查阿里云短信凭证");
+  const canonical = Object.keys(params).sort().map((key) => `${percentEncode(key)}=${percentEncode(params[key])}`).join("&");
+  params.Signature = crypto.createHmac("sha1", `${aliyunSms.accessKeySecret}&`).update(`POST&${percentEncode("/")}&${percentEncode(canonical)}`).digest("base64");
+  const query = Object.keys(params).sort().map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`).join("&");
+  const response = await fetch(`https://dysmsapi.aliyuncs.com/?${query}`, { method: "POST" });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.Code !== "OK") throw new Error(data.Message || "短信发送失败");
+  return { ok: true };
+};
 const body = (req) => new Promise((resolve, reject) => { let raw = ""; req.on("data", (chunk) => { raw += chunk; if (raw.length > 2e6) reject(new Error("payload too large")); }); req.on("end", () => { try { resolve(raw ? JSON.parse(raw) : {}); } catch { reject(new Error("invalid json")); } }); });
 const send = (res, status, data) => { res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type, Authorization", "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS", "Access-Control-Max-Age": "86400" }); res.end(JSON.stringify(data)); };
 
@@ -70,9 +105,10 @@ const server = http.createServer((req, res) => {
         const last = smsCodes.get(normalized);
         if (last && Date.now() - (last.lastSentAt || 0) < smsResendSeconds * 1000) return send(res, 429, { message: `请 ${smsResendSeconds} 秒后再获取验证码` });
         const code = resetCode();
+        const result = await sendSms(normalized, code);
         smsCodes.set(normalized, { code, expiresAt: Date.now() + 5 * 60 * 1000, attempts: 0, lastSentAt: Date.now(), mode });
         const payload = { message: mode === "register" ? "验证码已发送，注册后将自动创建账户" : "验证码已发送，请尽快输入", expiresInSeconds: 300 };
-        if (devSms) payload.devCode = code;
+        if (result.devCode) payload.devCode = result.devCode;
         return send(res, 200, payload);
       }
       if (req.url === "/auth/sms/verify" && req.method === "POST") {

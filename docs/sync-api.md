@@ -17,7 +17,7 @@
 - `POST /auth/sms/send`，请求 `{ "phone": "13800138000", "mode": "login" | "register" }`；默认开发模式返回 `{ "message": "...", "devCode": "123456", "expiresInSeconds": 300 }`。
 - `POST /auth/sms/verify`，请求 `{ "phone": "...", "code": "...", "mode": "login" | "register" }`，成功返回 `{ "token": "..." }`。
 - 手机号账户使用 `sms:<phone>` 作为账号键，与邮箱账户互相隔离；验证码 5 分钟有效、最多 5 次尝试、同号 60 秒限频。
-- 生产环境接入真实短信时设置 `SMS_DEV_MODE=false` 并接入短信服务商 API，前端无需改动。
+- 生产环境接入真实短信：设置 `SMS_DEV_MODE=false`、`SMS_PROVIDER=aliyun`，并配置 `ALIYUN_SMS_ACCESS_KEY_ID`、`ALIYUN_SMS_ACCESS_KEY_SECRET`、`ALIYUN_SMS_SIGN_NAME`、`ALIYUN_SMS_TEMPLATE_CODE`（模板变量固定为 `code`），前端无需改动。
 
 ## 桌面端跨设备配置
 

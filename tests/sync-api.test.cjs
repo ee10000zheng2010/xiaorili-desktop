@@ -196,3 +196,34 @@ test("sms register rejects duplicate phone", async () => {
   assert.equal(secondVerify.response.status, 409);
   assert.match(secondVerify.data.message, /已注册/);
 });
+
+test("sms send fails clearly when dev mode disabled without provider", async () => {
+  const port = 19787 + Math.floor(Math.random() * 500);
+  const dataFile = path.join(os.tmpdir(), `xiaorili-sms-off-${process.pid}.json`);
+  const child = spawn(process.execPath, [path.join(__dirname, "..", "sync-server.cjs")], {
+    env: { ...process.env, PORT: String(port), SYNC_DATA_FILE: dataFile, SMS_DEV_MODE: "false" },
+    stdio: "ignore",
+  });
+  try {
+    let ready = false;
+    for (let i = 0; i < 30; i += 1) {
+      try {
+        const response = await fetch(`http://127.0.0.1:${port}/health`);
+        if (response.ok) { ready = true; break; }
+      } catch {}
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    assert.ok(ready, "secondary server did not start");
+    const response = await fetch(`http://127.0.0.1:${port}/auth/sms/send`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: "13800000001", mode: "login" }),
+    });
+    const data = await response.json();
+    assert.equal(response.status, 500);
+    assert.match(data.message, /短信服务未配置/);
+    assert.equal(data.devCode, undefined);
+  } finally {
+    child.kill();
+    try { fs.unlinkSync(dataFile); } catch {}
+  }
+});

@@ -22,6 +22,11 @@ SYNC_USER="${SYNC_USER:-xiaorili}"
 PORT="${PORT:-8787}"
 SMS_DEV_MODE="${SMS_DEV_MODE:-true}"
 DOMAIN="${DOMAIN:-}"
+SMS_PROVIDER="${SMS_PROVIDER:-}"
+ALIYUN_SMS_ACCESS_KEY_ID="${ALIYUN_SMS_ACCESS_KEY_ID:-}"
+ALIYUN_SMS_ACCESS_KEY_SECRET="${ALIYUN_SMS_ACCESS_KEY_SECRET:-}"
+ALIYUN_SMS_SIGN_NAME="${ALIYUN_SMS_SIGN_NAME:-}"
+ALIYUN_SMS_TEMPLATE_CODE="${ALIYUN_SMS_TEMPLATE_CODE:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "==> 安装 Node.js 20"
@@ -45,6 +50,11 @@ sed \
   -e "s|{{DATA_DIR}}|$DATA_DIR|g" \
   -e "s|{{PORT}}|$PORT|g" \
   -e "s|{{SMS_DEV_MODE}}|$SMS_DEV_MODE|g" \
+  -e "s|{{SMS_PROVIDER}}|$SMS_PROVIDER|g" \
+  -e "s|{{ALIYUN_SMS_ACCESS_KEY_ID}}|$ALIYUN_SMS_ACCESS_KEY_ID|g" \
+  -e "s|{{ALIYUN_SMS_ACCESS_KEY_SECRET}}|$ALIYUN_SMS_ACCESS_KEY_SECRET|g" \
+  -e "s|{{ALIYUN_SMS_SIGN_NAME}}|$ALIYUN_SMS_SIGN_NAME|g" \
+  -e "s|{{ALIYUN_SMS_TEMPLATE_CODE}}|$ALIYUN_SMS_TEMPLATE_CODE|g" \
   "$APP_DIR/xiaorili-sync.service.template" > /etc/systemd/system/xiaorili-sync.service
 rm -f "$APP_DIR/xiaorili-sync.service.template"
 systemctl daemon-reload
