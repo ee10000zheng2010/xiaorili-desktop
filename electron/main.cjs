@@ -7,7 +7,10 @@ const {
   nativeImage,
   ipcMain,
   globalShortcut,
+  screen,
+  clipboard,
 } = require("electron");
+const { spawn } = require("child_process");
 const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
@@ -15,6 +18,7 @@ const fs = require("fs");
 let mainWindow;
 let widgetWindow;
 let tray;
+let syncServer;
 const settingsPath = path.join(app.getPath("userData"), "settings.json");
 const rendererLog = path.join(app.getPath("userData"), "renderer.log");
 const logRenderer = (text) => {
@@ -29,6 +33,7 @@ const readSettings = () => {
       desktopMode: true,
       opacity: 1,
       alwaysOnTop: false,
+      widgetBounds: null,
       ...JSON.parse(fs.readFileSync(settingsPath, "utf8")),
     };
   } catch {
@@ -37,6 +42,7 @@ const readSettings = () => {
       desktopMode: true,
       opacity: 1,
       alwaysOnTop: false,
+      widgetBounds: null,
     };
   }
 };
@@ -112,9 +118,20 @@ function showWidget() {
     widgetWindow.focus();
     return;
   }
+  const settings = readSettings();
+  const savedBounds = settings.widgetBounds;
+  const display = screen.getPrimaryDisplay();
+  const workArea = display.workArea;
+  const hasValidPosition = savedBounds &&
+    Number.isFinite(savedBounds.x) && Number.isFinite(savedBounds.y) &&
+    savedBounds.x < workArea.x + workArea.width - 80 &&
+    savedBounds.x + (savedBounds.width || 440) > workArea.x + 80 &&
+    savedBounds.y < workArea.y + workArea.height - 80 &&
+    savedBounds.y + (savedBounds.height || 600) > workArea.y + 80;
   widgetWindow = new BrowserWindow({
     width: 440,
     height: 600,
+    ...(hasValidPosition ? { x: savedBounds.x, y: savedBounds.y } : {}),
     frame: false,
     resizable: true,
     alwaysOnTop: false,
@@ -127,9 +144,17 @@ function showWidget() {
     },
   });
   widgetWindow.loadFile(appFile("index.html"), { hash: "widget" });
+  widgetWindow.on("moved", () => {
+    if (widgetWindow && !widgetWindow.isDestroyed()) {
+      writeSettings({ ...readSettings(), widgetBounds: widgetWindow.getBounds() });
+    }
+  });
   widgetWindow.on("closed", () => {
     widgetWindow = null;
   });
+}
+function broadcastDataChanged() {
+  if (widgetWindow && !widgetWindow.isDestroyed()) widgetWindow.webContents.send("data-changed");
 }
 function createTray() {
   const icon = nativeImage.createFromPath(iconFile);
@@ -158,18 +183,33 @@ function createTray() {
   );
   tray.on("double-click", showWindow);
 }
+function startSyncServer() {
+  if (syncServer) return;
+  const script = app.isPackaged
+    ? path.join(app.getAppPath(), "sync-server.cjs")
+    : path.join(__dirname, "..", "sync-server.cjs");
+  syncServer = spawn(process.execPath, [script], {
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1", PORT: "8787", SYNC_DATA_FILE: path.join(app.getPath("userData"), "sync-data.json") },
+    stdio: "ignore",
+    windowsHide: true,
+  });
+  syncServer.once("exit", () => { syncServer = null; });
+}
 app.whenReady().then(() => {
+  startSyncServer();
   const settings = readSettings();
   app.setLoginItemSettings({ openAtLogin: Boolean(settings.launchAtStartup) });
   createWindow();
   createTray();
   if (app.isPackaged) {
-    autoUpdater.autoDownload = false;
-    autoUpdater
-      .checkForUpdates()
-      .catch((error) => logRenderer(`update-check ${error.message}`));
+    autoUpdater.autoDownload = true;
+    setTimeout(() => autoUpdater.checkForUpdates().catch((error) =>
+      logRenderer(`update-check ${error.message}`)), 10000);
     autoUpdater.on("update-available", (info) =>
       mainWindow?.webContents.send("update-available", info),
+    );
+    autoUpdater.on("update-downloaded", (info) =>
+      mainWindow?.webContents.send("update-downloaded", info),
     );
   }
   if (settings.desktopMode) showWidget();
@@ -216,7 +256,21 @@ ipcMain.handle("app-info", () => ({
   version: app.getVersion(),
   platform: process.platform,
 }));
+ipcMain.handle("read-clipboard-image", () => {
+  const image = clipboard.readImage();
+  if (image.isEmpty()) return { ok: false, message: "剪贴板中没有图片" };
+  return { ok: true, dataUrl: image.toDataURL(), width: image.getSize().width, height: image.getSize().height };
+});
 ipcMain.handle("check-for-updates", async () => {
+  if (app.isPackaged) {
+    try {
+      const result = await autoUpdater.checkForUpdates();
+      return { available: Boolean(result?.updateInfo?.version && result.updateInfo.version !== app.getVersion()), version: result?.updateInfo?.version || app.getVersion(), downloading: true };
+    } catch (error) {
+      logRenderer(`update-check ${error.message}`);
+      return { available: false, version: app.getVersion(), message: "暂时无法连接更新服务" };
+    }
+  }
   const manifestUrl = process.env.WORKDAY_UPDATE_URL;
   if (!manifestUrl)
     return {
@@ -242,12 +296,18 @@ ipcMain.handle("check-for-updates", async () => {
     };
   }
 });
+ipcMain.handle("install-update", () => {
+  if (app.isPackaged) autoUpdater.quitAndInstall(false, true);
+});
 ipcMain.on("close-widget", () => {
   if (widgetWindow && !widgetWindow.isDestroyed()) widgetWindow.close();
 });
 ipcMain.on("open-main", showWindow);
+ipcMain.on("open-widget", showWidget);
+ipcMain.on("data-changed", broadcastDataChanged);
 app.on("before-quit", () => {
   app.isQuitting = true;
+  syncServer?.kill();
   globalShortcut.unregisterAll();
 });
 app.on("window-all-closed", () => {

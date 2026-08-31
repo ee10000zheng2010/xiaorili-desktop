@@ -1,0 +1,19 @@
+[Unit]
+Description=Xiaorili Sync Server
+After=network.target
+
+[Service]
+User={{SYNC_USER}}
+Group={{SYNC_USER}}
+WorkingDirectory={{APP_DIR}}
+ExecStart=/usr/bin/node {{APP_DIR}}/sync-server.cjs
+Restart=always
+RestartSec=3
+Environment=PORT={{PORT}}
+Environment=SYNC_DATA_FILE={{DATA_DIR}}/sync-data.json
+Environment=SMS_DEV_MODE={{SMS_DEV_MODE}}
+Environment=SMS_RESEND_SECONDS=60
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

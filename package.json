@@ -1,40 +1,58 @@
 {
   "name": "workday-calendar",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "main": "electron/main.cjs",
-  "description": "桌面待办与日历工具",
+  "description": "Lightweight cross-device calendar and task app",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "desktop": "npm run build && electron .",
+    "sync-server": "node sync-server.cjs",
+    "cap:sync": "npm run build && cap sync",
+    "cap:ios": "npm run build && cap sync ios",
+    "build:android": "npm run build && cap sync android && cd android && set \"JAVA_HOME=%USERPROFILE%\\jdk21\\jdk-21.0.12.1+1\" && set \"ANDROID_HOME=%USERPROFILE%\\Android\\Sdk\" && gradlew.bat assembleMobileDebug assembleHuaweiDebug",
+    "test": "node --test tests/*.test.cjs",
+    "test:desktop": "node tests/desktop-smoke.cjs",
+    "test:mobile": "node tests/mobile-smoke.cjs",
     "dist:win": "npm run build && electron-builder --win"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/ios": "^8.5.0",
     "@vitejs/plugin-react": "latest",
+    "electron-updater": "^6.8.9",
     "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "tesseract.js": "^6.0.1",
     "vite": "latest"
   },
   "devDependencies": {
     "electron": "^43.4.0",
     "electron-builder": "^26.15.3",
-    "electron-updater": "^6.6.2",
     "playwright": "^1.62.1"
   },
   "build": {
     "icon": "assets/app-icon.ico",
+    "directories": {
+      "output": "release-build",
+      "buildResources": "assets"
+    },
     "files": [
       "dist/**/*",
       "electron/**/*",
       "assets/**/*",
+      "sync-server.cjs",
       "package.json"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "signAndEditExecutable": false
     },
     "publish": {
       "provider": "github",

@@ -1,0 +1,5 @@
+# 复制到 /etc/caddy/Caddyfile 并把域名替换成你的服务器域名
+# 首次配置前先在 DNS 解析中把域名 A 记录指向本机公网 IP
+your-domain.example {
+	reverse_proxy 127.0.0.1:8787
+}
