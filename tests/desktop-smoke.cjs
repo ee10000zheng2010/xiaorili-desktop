@@ -26,6 +26,7 @@ const dateKey = (d) =>
   const errors = [];
   let app;
   let syncServer;
+  let userDataDir;
   try {
     syncServer = spawn(process.execPath, [path.join(root, "sync-server.cjs")], {
       env: { ...process.env, PORT: String(syncPort), SYNC_DATA_FILE: dataFile, SMS_RESEND_SECONDS: "0" },
@@ -33,10 +34,12 @@ const dateKey = (d) =>
     });
     await waitUrl(`http://127.0.0.1:${syncPort}/health`);
     const packaged = process.env.SMOKE_EXE;
+    userDataDir = path.join(os.tmpdir(), `xiaorili-desktop-userdata-${process.pid}-${Date.now()}`);
     app = await _electron.launch({
       ...(packaged ? { executablePath: packaged, args: [] } : { args: ["."] }),
       cwd: root,
       timeout: 60000,
+      args: packaged ? [] : [".", `--user-data-dir=${userDataDir}`],
     });
     const trackWindow = (win) => {
       win.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
@@ -99,7 +102,10 @@ const dateKey = (d) =>
       done: false,
     }));
     await mainPage.evaluate(
-      (tasks) => localStorage.setItem("workday-tasks", JSON.stringify(tasks)),
+      (tasks) => {
+        localStorage.removeItem("workday-account");
+        localStorage.setItem("workday-tasks", JSON.stringify(tasks));
+      },
       seedTasks,
     );
     await mainPage.evaluate((url) => localStorage.setItem("workday-sync-server", url), `http://localhost:${syncPort}`);
@@ -137,7 +143,11 @@ const dateKey = (d) =>
     await mainPage.click('.sidebar button:has-text("偏好设置")');
     await mainPage.waitForSelector(".account-panel");
     const smsTabCount = await mainPage.locator('.account-panel button:has-text("手机验证码")').count();
-    if (smsTabCount === 0) throw new Error("desktop sms login tab missing");
+    if (smsTabCount === 0) {
+      const bodyText = await mainPage.evaluate(() => document.body.innerText);
+      const buttons = await mainPage.locator("button").allTextContents();
+      throw new Error(`desktop sms login tab missing. body: ${bodyText.slice(0, 1200)} buttons: ${JSON.stringify(buttons.slice(0, 60))}`);
+    }
     await mainPage.click('.account-panel button:has-text("手机验证码")');
     const smsPhone = `136${String(Date.now()).slice(-8)}`;
     await mainPage.click('.account-panel .segmented button:has-text("注册")');
@@ -181,6 +191,9 @@ const dateKey = (d) =>
     syncServer?.kill();
     try {
       fs.unlinkSync(dataFile);
+    } catch {}
+    try {
+      fs.rmSync(userDataDir, { recursive: true, force: true });
     } catch {}
   }
   if (errors.length > 0) {
